@@ -42,17 +42,7 @@ model CodeVersion {
 
 model AnalysisResult {
   id            String   @id @default(uuid()) @db.Uuid
-  codeVersionId String   @db.Uuid
-  summary       String
-  createdAt     DateTime @default(now())
-
-  codeVersion CodeVersion     @relation(fields: [codeVersionId], references: [id])
-  issues      AnalysisIssue[]
-}
-
-model AnalysisResult {
-  id            String   @id @default(uuid()) @db.Uuid
-  codeVersionId String   @db.Uuid
+  codeVersionId String   @unique @db.Uuid
   summary       String
   createdAt     DateTime @default(now())
 
@@ -78,7 +68,7 @@ model AnalysisIssue {
 
 model IssueSnippet {
   id              String @id @default(uuid()) @db.Uuid
-  analysisIssueId String @db.Uuid
+  analysisIssueId String @unique @db.Uuid
 
   beforeSnippet String?
   afterSnippet  String?
@@ -116,7 +106,7 @@ model ComparisonResult {
 
 model AIExplanation {
   id           String   @id @default(uuid()) @db.Uuid
-  comparisonId String   @db.Uuid
+  comparisonId String   @unique @db.Uuid
   explanation  String
   createdAt    DateTime @default(now())
 
