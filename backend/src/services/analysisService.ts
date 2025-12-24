@@ -1,5 +1,12 @@
 import prisma from "../utils/prisma.js";
 import type { AIAnalysisResponse, AIIssue } from "../types/index.js";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+// Initialize Gemini
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 export const analysisService = {
   /**
@@ -8,7 +15,7 @@ export const analysisService = {
    */
   async analyzeCode(codeVersionId: string, sourceCode: string) {
     // Call AI to analyze the code
-    const aiResponse = await callAIForAnalysis(sourceCode);
+    const aiResponse = await callGeminiForAnalysis(sourceCode);
 
     // Store structured analysis results
     const analysisResult = await prisma.analysisResult.create({
@@ -64,30 +71,74 @@ export const analysisService = {
 };
 
 /**
- * Call AI API to analyze source code
+ * Call Gemini API to analyze source code
  * Returns structured JSON analysis
- * 
- * TODO: Replace with actual AI API call (OpenAI, Gemini, etc.)
- * Currently returns mock data for development
  */
-async function callAIForAnalysis(sourceCode: string): Promise<AIAnalysisResponse> {
-  console.log("Analyzing code with AI... (mock implementation)");
-  console.log("Source code length:", sourceCode.length, "characters");
+async function callGeminiForAnalysis(sourceCode: string): Promise<AIAnalysisResponse> {
+  console.log("🤖 Analyzing code with Gemini...");
+  console.log("📝 Source code length:", sourceCode.length, "characters");
 
-  // Mock response for development
-  return {
-    summary: "Code analysis completed. Found potential issues related to complexity and code quality.",
-    issues: [
-      {
-        issueCode: "NESTED_LOOP",
-        severity: "high",
-        complexity: "O_n2",
-        functionName: "processData",
-        startLine: 10,
-        endLine: 25,
-        beforeSnippet: "for (let i = 0; i < arr.length; i++) {\n  for (let j = 0; j < arr.length; j++) {\n    // O(n²) complexity\n  }\n}",
-        afterSnippet: "const map = new Map();\narr.forEach(item => map.set(item.key, item));",
-      },
-    ],
-  };
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+    const prompt = `You are a code analyzer. Analyze the following code and return a JSON object with this EXACT structure:
+
+{
+  "summary": "Brief summary of the analysis (max 2 sentences)",
+  "issues": [
+    {
+      "issueCode": "NESTED_LOOP" | "UNUSED_VARIABLE" | "MAGIC_NUMBER" | "LONG_FUNCTION" | "DUPLICATE_CODE",
+      "severity": "low" | "medium" | "high",
+      "complexity": "O_1" | "O_n" | "O_n2",
+      "functionName": "optional function name where issue is found",
+      "startLine": optional line number (integer),
+      "endLine": optional line number (integer),
+      "beforeSnippet": "optional code snippet showing the issue (max 5 lines)",
+      "afterSnippet": "optional suggested fix snippet (max 5 lines)"
+    }
+  ]
+}
+
+RULES:
+- issueCode MUST be one of: NESTED_LOOP, UNUSED_VARIABLE, MAGIC_NUMBER, LONG_FUNCTION, DUPLICATE_CODE
+- severity MUST be one of: low, medium, high
+- complexity MUST be one of: O_1, O_n, O_n2
+- Return ONLY valid JSON, no markdown, no explanation
+- If no issues found, return empty issues array
+
+CODE TO ANALYZE:
+\`\`\`
+${sourceCode}
+\`\`\``;
+
+    const result = await model.generateContent(prompt);
+    const response = result.response;
+    const text = response.text();
+
+    // Clean the response (remove markdown code blocks if present)
+    let cleanedText = text.trim();
+    if (cleanedText.startsWith("```json")) {
+      cleanedText = cleanedText.slice(7);
+    }
+    if (cleanedText.startsWith("```")) {
+      cleanedText = cleanedText.slice(3);
+    }
+    if (cleanedText.endsWith("```")) {
+      cleanedText = cleanedText.slice(0, -3);
+    }
+    cleanedText = cleanedText.trim();
+
+    console.log("✅ Gemini response received");
+
+    const parsed = JSON.parse(cleanedText) as AIAnalysisResponse;
+    return parsed;
+  } catch (error) {
+    console.error("❌ Gemini API error:", error);
+    
+    // Return fallback response on error
+    return {
+      summary: "Analysis failed - unable to parse code at this time.",
+      issues: [],
+    };
+  }
 }

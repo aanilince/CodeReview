@@ -1,5 +1,12 @@
 import prisma from "../utils/prisma.js";
 import type { ComparisonResult } from "@prisma/client";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+// Initialize Gemini
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 export const aiExplanationService = {
   /**
@@ -29,7 +36,7 @@ export const aiExplanationService = {
     }
 
     // Call AI to explain the comparison results
-    const explanation = await callAIForExplanation(comparison.results);
+    const explanation = await callGeminiForExplanation(comparison.results);
 
     // Store explanation
     const aiExplanation = await prisma.aIExplanation.create({
@@ -53,54 +60,61 @@ export const aiExplanationService = {
 };
 
 /**
- * Call AI API to generate natural language explanation
+ * Call Gemini API to generate natural language explanation
  * AI explains the BACKEND's deterministic decisions
- * 
- * TODO: Replace with actual AI API call
- * Currently returns mock explanation for development
  */
-async function callAIForExplanation(results: ComparisonResult[]): Promise<string> {
-  console.log("Generating AI explanation... (mock implementation)");
+async function callGeminiForExplanation(results: ComparisonResult[]): Promise<string> {
+  console.log("🤖 Generating explanation with Gemini...");
 
-  const improved = results.filter((r) => r.changeType === "IMPROVED");
-  const worsened = results.filter((r) => r.changeType === "WORSENED");
-  const unchanged = results.filter((r) => r.changeType === "UNCHANGED");
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-  // Mock explanation based on results
-  let explanation = "## Code Review Comparison Summary\n\n";
+    const improved = results.filter((r) => r.changeType === "IMPROVED");
+    const worsened = results.filter((r) => r.changeType === "WORSENED");
+    const unchanged = results.filter((r) => r.changeType === "UNCHANGED");
 
-  if (improved.length > 0) {
-    explanation += `### ✅ Improvements (${improved.length})\n`;
-    for (const result of improved) {
-      explanation += `- **${result.issueCode}**: `;
-      if (!result.afterSeverity) {
-        explanation += "Issue has been completely resolved.\n";
-      } else {
-        explanation += `Severity reduced from ${result.beforeSeverity} to ${result.afterSeverity}.\n`;
-      }
-    }
-    explanation += "\n";
+    const prompt = `You are a code review assistant. Explain the following comparison results between two code versions in a clear, helpful way.
+
+The comparison was done DETERMINISTICALLY by the backend:
+- IMPROVED = issue removed or severity/complexity decreased
+- WORSENED = new issue or severity/complexity increased  
+- UNCHANGED = no change in issue
+
+COMPARISON RESULTS:
+${JSON.stringify(results, null, 2)}
+
+SUMMARY:
+- Improvements: ${improved.length}
+- Regressions: ${worsened.length}
+- Unchanged: ${unchanged.length}
+
+Write a concise explanation in MARKDOWN format with:
+1. Overall assessment (1-2 sentences)
+2. Improvements section (if any) - explain what got better
+3. Regressions section (if any) - explain what needs attention
+4. Recommendations (1-2 bullet points)
+
+Keep it under 300 words. Be encouraging but honest.`;
+
+    const result = await model.generateContent(prompt);
+    const response = result.response;
+    const text = response.text();
+
+    console.log("✅ Gemini explanation generated");
+
+    return text;
+  } catch (error) {
+    console.error("❌ Gemini API error:", error);
+    
+    // Fallback explanation
+    const improved = results.filter((r) => r.changeType === "IMPROVED");
+    const worsened = results.filter((r) => r.changeType === "WORSENED");
+    
+    return `## Code Comparison Summary
+
+**Improvements:** ${improved.length} issue(s) resolved or improved
+**Regressions:** ${worsened.length} issue(s) need attention
+
+Unable to generate detailed AI explanation at this time. Please review the comparison results manually.`;
   }
-
-  if (worsened.length > 0) {
-    explanation += `### ⚠️ Regressions (${worsened.length})\n`;
-    for (const result of worsened) {
-      explanation += `- **${result.issueCode}**: `;
-      if (!result.beforeSeverity) {
-        explanation += "New issue introduced.\n";
-      } else {
-        explanation += `Severity increased from ${result.beforeSeverity} to ${result.afterSeverity}.\n`;
-      }
-    }
-    explanation += "\n";
-  }
-
-  if (unchanged.length > 0) {
-    explanation += `### ➖ Unchanged (${unchanged.length})\n`;
-    for (const result of unchanged) {
-      explanation += `- **${result.issueCode}**: No change detected.\n`;
-    }
-  }
-
-  return explanation;
 }

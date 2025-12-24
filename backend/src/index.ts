@@ -6,6 +6,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 // Import routes
+import authRoutes from "./routes/authRoutes.js";
 import projectRoutes from "./routes/projectRoutes.js";
 import codeVersionRoutes from "./routes/codeVersionRoutes.js";
 import analysisRoutes from "./routes/analysisRoutes.js";
@@ -24,6 +25,7 @@ app.get("/health", (_req, res) => {
 });
 
 // Mount routes
+app.use("/auth", authRoutes);
 app.use("/projects", projectRoutes);
 app.use("/api", codeVersionRoutes);
 app.use("/api", analysisRoutes);
