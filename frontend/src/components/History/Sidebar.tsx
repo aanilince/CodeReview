@@ -17,8 +17,8 @@ interface SidebarProps {
     onProjectChange: (id: string) => void;
     versionList: Version[];
     comparisonList: Comparison[];
-    selectedVersion: Version | null;
-    selectedComparison: Comparison | null;
+    selectedId: string | null;
+    selectedType: "version" | "comparison" | null;
     onVersionSelect: (version: Version) => void;
     onComparisonSelect: (comparison: Comparison) => void;
     activeTab: "versions" | "comparisons";
@@ -41,8 +41,8 @@ export default function Sidebar({
     onProjectChange,
     versionList,
     comparisonList,
-    selectedVersion,
-    selectedComparison,
+    selectedId,
+    selectedType,
     onVersionSelect,
     onComparisonSelect,
     activeTab,
@@ -97,7 +97,7 @@ export default function Sidebar({
       w-full md:w-1/3 min-w-[320px] max-w-full md:max-w-[420px] 
       bg-bg-secondary/50 glass border-r border-glass-border flex flex-col 
       absolute md:static top-0 bottom-0 left-0 z-10 transition-transform duration-300
-      ${(selectedVersion || selectedComparison) ? '-translate-x-full md:translate-x-0' : 'translate-x-0'}
+      ${selectedId ? '-translate-x-full md:translate-x-0' : 'translate-x-0'}
     `}
         >
             <div className="p-6 border-b border-border/50 sticky top-0 z-10 space-y-4 bg-bg-secondary/30 backdrop-blur-md">
@@ -192,7 +192,7 @@ export default function Sidebar({
                 )}
 
                 {!isLoading && activeTab === "versions" && versionList.map((version) => {
-                    const isSelected = selectedVersion?.id === version.id;
+                    const isSelected = selectedType === "version" && selectedId === version.id;
                     const isChosenForCompare = selectedForCompare.includes(version.id);
                     const active = isCompareMode ? isChosenForCompare : isSelected;
                     const isEditing = editingId === version.id;
@@ -284,7 +284,7 @@ export default function Sidebar({
                 })}
 
                 {!isLoading && activeTab === "comparisons" && comparisonList.map((comparison) => {
-                    const isSelected = selectedComparison?.id === comparison.id;
+                    const isSelected = selectedType === "comparison" && selectedId === comparison.id;
 
                     return (
                         <div
