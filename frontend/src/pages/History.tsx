@@ -39,7 +39,7 @@ export default function History() {
         if (!projectId) return;
 
         setIsLoading(true);
-        
+
         Promise.all([
             versions.list(projectId),
             comparisons.list(projectId)
@@ -103,7 +103,6 @@ export default function History() {
     };
 
     const handleVersionDelete = async (versionId: string) => {
-        if (!window.confirm("Are you sure you want to delete this version?")) return;
         try {
             await versions.delete(versionId);
             setVersionList(prev => prev.filter(v => v.id !== versionId));
