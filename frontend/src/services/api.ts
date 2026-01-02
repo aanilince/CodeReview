@@ -1,5 +1,5 @@
-const API_BASE = "http://localhost:3000/api";
-
+const VITE_APP_BASE_URL = import.meta.env.VITE_APP_BASE_URL || "http://localhost:8080/api";
+const API_BASE = VITE_APP_BASE_URL
 export class ApiError extends Error {
     public message: string;
     public status?: number;
