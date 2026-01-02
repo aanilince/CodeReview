@@ -96,17 +96,26 @@ export const statsService = {
       orderBy: { createdAt: "asc" },
     });
 
-    // Group by date
+    // Build a map of all 7 days with default 0 values
     const trendMap: Record<string, number> = {};
-
-    for (const analysis of analyses) {
-      const dateKey = analysis.createdAt.toISOString().split("T")[0];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const dateKey = date.toISOString().split("T")[0];
       if (dateKey) {
-        trendMap[dateKey] = (trendMap[dateKey] || 0) + analysis._count.issues;
+        trendMap[dateKey] = 0;
       }
     }
 
-    // Convert to array
+    // Fill in actual data
+    for (const analysis of analyses) {
+      const dateKey = analysis.createdAt.toISOString().split("T")[0];
+      if (dateKey && trendMap[dateKey] !== undefined) {
+        trendMap[dateKey] = trendMap[dateKey] + analysis._count.issues;
+      }
+    }
+
+    // Convert to array (already in order since we built it that way)
     const trends = Object.entries(trendMap).map(([date, issues]) => ({
       date,
       issues,

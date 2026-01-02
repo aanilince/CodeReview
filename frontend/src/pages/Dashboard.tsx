@@ -206,16 +206,16 @@ export default function Dashboard() {
                   Son 7 Günlük Issue Trendi
                 </h2>
                 {trends.length > 0 ? (
-                  <div className="flex items-end gap-2 h-32">
+                  <div className="flex items-end gap-2 h-40">
                     {trends.map((trend, i) => {
-                      const maxIssues = Math.max(...trends.map((t) => t.issues));
-                      const height = maxIssues > 0 ? (trend.issues / maxIssues) * 100 : 0;
+                      const maxIssues = Math.max(...trends.map((t) => t.issues), 1);
+                      const heightPx = Math.max((trend.issues / maxIssues) * 120, 8);
                       return (
                         <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                          <span className="text-xs text-text-secondary">{trend.issues}</span>
+                          <span className="text-xs text-text-secondary font-medium">{trend.issues}</span>
                           <div
-                            className="w-full bg-accent/80 rounded-t-lg transition-all duration-500 hover:bg-accent"
-                            style={{ height: `${Math.max(height, 8)}%` }}
+                            className="w-full bg-accent rounded-t-lg transition-all duration-500 hover:bg-accent/80 min-w-[20px]"
+                            style={{ height: `${heightPx}px` }}
                           />
                           <span className="text-xs text-text-secondary">
                             {new Date(trend.date).toLocaleDateString("tr-TR", { weekday: "short" })}
